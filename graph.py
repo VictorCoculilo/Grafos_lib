@@ -51,7 +51,7 @@ class Graph:
             if self.use_matrix:
                 file.write("# Matriz de Adjacência com Pesos\n")
                 for row in self.adj_matrix:
-                    line = ' '.join(str(val) if val is not None else '0' for val in row)
+                    line = ' '.join(str(val) if val is not None else '0.0' for val in row)
                     file.write(f"{line}\n")
             else:
                 file.write("# Lista de Adjacência com Pesos\n")
