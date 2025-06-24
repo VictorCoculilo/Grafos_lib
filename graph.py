@@ -3,13 +3,15 @@ from collections import defaultdict, deque
 import heapq
 
 class Graph:
-    def __init__(self, use_matrix: bool = False):
+    def __init__(self, use_matrix: bool = False, directed: bool = False):
         self.use_matrix = use_matrix
+        self.directed = directed
         self.num_vertices = 0
         self.edge_count = 0
-        self.adj_list: Dict[int, List[Tuple[int, float]]] = defaultdict(list)  # (vizinho, peso)
+        self.adj_list: Dict[int, List[Tuple[int, float]]] = defaultdict(list)
         self.adj_matrix: Optional[List[List[Optional[float]]]] = None
         self.degrees: Dict[int, int] = defaultdict(int)
+
 
     def load_from_file(self, filepath: str):
         with open(filepath, 'r') as file:
@@ -27,14 +29,18 @@ class Graph:
 
     def add_edge(self, u: int, v: int, weight: float = 1.0):
         if self.use_matrix:
-            self.adj_matrix[u-1][v-1] = weight
-            self.adj_matrix[v-1][u-1] = weight
+            self.adj_matrix[u - 1][v - 1] = weight
+            if not self.directed:
+                self.adj_matrix[v - 1][u - 1] = weight
         else:
             self.adj_list[u].append((v, weight))
-            self.adj_list[v].append((u, weight))
+            if not self.directed:
+                self.adj_list[v].append((u, weight))
         self.edge_count += 1
         self.degrees[u] += 1
-        self.degrees[v] += 1
+        if not self.directed:
+            self.degrees[v] += 1
+
 
     def export_graph_info(self, filepath: str):
         with open(filepath, 'w') as file:
@@ -49,12 +55,12 @@ class Graph:
     def export_representation(self, filepath: str):
         with open(filepath, 'w') as file:
             if self.use_matrix:
-                file.write("# Matriz de Adjacência com Pesos\n")
+                file.write("Matriz de Adjacência com Pesos\n")
                 for row in self.adj_matrix:
                     line = ' '.join(str(val) if val is not None else '0.0' for val in row)
                     file.write(f"{line}\n")
             else:
-                file.write("# Lista de Adjacência com Pesos\n")
+                file.write("Lista de Adjacência com Pesos\n")
                 for vertex in sorted(self.adj_list.keys()):
                     neighbors = ' '.join(f"{v}({w})" for v, w in sorted(self.adj_list[vertex]))
                     file.write(f"{vertex}: {neighbors}\n")
@@ -95,7 +101,7 @@ class Graph:
     def export_dfs_order(self, filepath: str):
         order = self.dfs_descending_order()
         with open(filepath, 'w') as file:
-            file.write("# Ordem decrescente por término (DFS)\n")
+            file.write("Ordem decrescente por término (DFS)\n")
             for vertex in order:
                 file.write(f"{vertex}\n")
 
@@ -133,7 +139,7 @@ class Graph:
 
     def export_search_tree(self, result: List[Tuple[int, Optional[int], int]], filepath: str, method: str):
         with open(filepath, 'w') as file:
-            file.write(f"# Árvore de busca gerada por {method}\n")
+            file.write(f"Árvore de busca gerada por {method}\n")
             for vertex, parent, lvl in result:
                 file.write(f"Vértice: {vertex} | Pai: {parent if parent else '-'} | Nível: {lvl}\n")
 
@@ -160,7 +166,7 @@ class Graph:
     def export_connected_components(self, filepath: str):
         components = self.connected_components()
         with open(filepath, 'w') as file:
-            file.write(f"# Número de componentes conexos: {len(components)}\n")
+            file.write(f"Número de componentes conexos: {len(components)}\n")
             for i, comp in enumerate(components, 1):
                 file.write(f"Componente {i} (tamanho {len(comp)}): {' '.join(map(str, comp))}\n")
 
@@ -213,7 +219,7 @@ class Graph:
     def shortest_path(self, start: int) -> Tuple[Dict[int, float], Dict[int, Optional[int]]]:
         if self.use_matrix or self.has_weights():
             if self.has_negative_weights():
-                raise ValueError("O grafo contém pesos negativos. Dijkstra não é aplicável.")
+                raise ValueError("O grafo contém pesos negativos!")
             return self._dijkstra(start)
         else:
             return self._bfs_shortest_path(start)
@@ -239,6 +245,43 @@ class Graph:
                     else:
                         caminho_str = " -> ".join(map(str, path))
                         file.write(f"{start} -> {v}: {caminho_str} (distância = {dist[v]})\n")
+        except ValueError as e:
+            with open(filepath, 'w') as file:
+                file.write(f"Erro: {e}\n")
+
+    def topological_sort_dfs(self) -> List[int]:
+        visited = set()
+        order = []
+        on_stack = set()
+        has_cycle = [False] 
+
+        def dfs(v: int):
+            visited.add(v)
+            on_stack.add(v)
+            for neighbor in self.get_neighbors(v):
+                if neighbor not in visited:
+                    dfs(neighbor)
+                elif neighbor in on_stack:
+                    has_cycle[0] = True 
+            on_stack.remove(v)
+            order.append(v)
+
+        for vertex in range(1, self.num_vertices + 1):
+            if vertex not in visited:
+                dfs(vertex)
+
+        if has_cycle[0]:
+            raise ValueError("O grafo tem contém ciclos!")
+
+        return order[::-1]  
+
+    def export_topological_order(self, filepath: str):
+        try:
+            order = self.topological_sort_dfs()
+            with open(filepath, 'w') as file:
+                file.write("Ordenação Topológica (DFS)\n")
+                for vertex in order:
+                    file.write(f"{vertex}\n")
         except ValueError as e:
             with open(filepath, 'w') as file:
                 file.write(f"Erro: {e}\n")

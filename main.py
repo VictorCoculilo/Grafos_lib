@@ -1,7 +1,7 @@
 from graph import Graph
 
 def main():
-    grafo = Graph(use_matrix=True)
+    grafo = Graph(use_matrix=True, directed=True)
     grafo.load_from_file("entrada.txt")
 
     grafo.export_representation("grafo.txt")
@@ -16,6 +16,9 @@ def main():
 
     grafo.export_connected_components("componentes.txt")
     grafo.export_shortest_paths(start=1, filepath="caminhos_minimos.txt")
+    
+    grafo.export_topological_order("ordenacao_topologica.txt")
+
 
 if __name__ == "__main__":
     main()
